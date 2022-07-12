@@ -1,4 +1,5 @@
 // import jwtDecode from "jwt-decode";
+const { TableServiceClient, AzureNamedKeyCredential } = require("@azure/data-tables");
 const jwtDecode = require("jwt-decode");
 const express = require("express");
 const app = express();
@@ -17,9 +18,15 @@ const app = express();
 // if(1657588049 < new Date()/1000) console.log('expired');
 // else console.log('not expired');
 
+// DOCS LMAO
+// https://docs.microsoft.com/en-us/azure/cosmos-db/table/how-to-use-nodejs
 //
-//
-//
+const tableService = new TableServiceClient(
+    "https://sadr3amspace.table.core.windows.net/",
+    new AzureNamedKeyCredential("sadr3amspace", "LgATTCXQjEGD6bd7jkmHrbGVMvpYqmpSLakNeW07SnqWpqVrRTCesjRaUhTR8/IUFt2mO89DenN4+ASt/nBlow==")
+  );
+
+tableService.createTable('mytable');
 
 app.get("/", function (req, res) {
     res.json({ status: ":P"});
