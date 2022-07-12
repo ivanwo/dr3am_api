@@ -2,8 +2,9 @@
 const { TableServiceClient, AzureNamedKeyCredential } = require("@azure/data-tables");
 const jwtDecode = require("jwt-decode");
 const express = require("express");
+const cors = require("cors");
 const app = express();
-
+app.use(cors())
 // let date = Date.now()
 // console.log(date);
 // console.log(Date.parse(1657588049));
@@ -26,13 +27,14 @@ const tableService = new TableServiceClient(
     new AzureNamedKeyCredential("sadr3amspace", "LgATTCXQjEGD6bd7jkmHrbGVMvpYqmpSLakNeW07SnqWpqVrRTCesjRaUhTR8/IUFt2mO89DenN4+ASt/nBlow==")
   );
 
-tableService.createTable('mytable');
+// tableService.createTable('mytable');
 
 app.get("/", function (req, res) {
     res.json({ status: ":P"});
 });
 
 app.get("/i", function (req, res) {
+    console.log(req.headers);
   let token = req.headers.authorization;
   let decodedToken = jwtDecode(token);
   if (
@@ -48,4 +50,5 @@ app.get("/i", function (req, res) {
   }
 });
 
+console.log("api started up: listening on port 3000");
 app.listen(3000);
