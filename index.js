@@ -20,8 +20,12 @@ const app = express();
 //
 //
 //
-//
+
 app.get("/", function (req, res) {
+    res.json({ status: ":P"});
+});
+
+app.get("/i", function (req, res) {
   let token = req.headers.authorization;
   let decodedToken = jwtDecode(token);
   if (
