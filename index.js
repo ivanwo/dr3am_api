@@ -13,7 +13,7 @@ const cors = require("cors");
 //  !   SETUP   !
 //  ! ! ! ! ! ! !
 const app = express();
-app.use(express.urlencoded());
+// app.use(express.urlencoded());
 app.use(express.json());
 app.use(cors());
 
@@ -69,7 +69,6 @@ app.post("/dream", cors(), async function (req, res) {
   }
   // validate the dream object that comes in the request body
   let newDream = req.body;
-  console.log(req.body);
   if (!validateDreamContent(newDream)) {
     res.statusCode = 400;
     res.json({ status: "malformed dream" });
@@ -87,23 +86,23 @@ app.post("/dream", cors(), async function (req, res) {
 
 // get a specific dream based on dream partition key
 app.get("/dream/:id", cors(), async function (req, res) {
-    //validate the auth token
-    if (!validateAuthToken(req.headers.authorization)) {
-      res.statusCode = 401;
-      res.json({ status: "invalid token" });
-    }
-    // get dream id from url
-    let dreamId = req.params.id;
-    try {
-      // get dream from storage account
-      let dreamFetchResult = await tableClient.getEntity("dreams", dreamId);
-      res.statusCode = 200;
-      res.json(dreamFetchResult);
-    } catch {
-      res.statusCode = 500;
-      res.json({ status: "problem getting dream" });
-    }
-  });
+  //validate the auth token
+  if (!validateAuthToken(req.headers.authorization)) {
+    res.statusCode = 401;
+    res.json({ status: "invalid token" });
+  }
+  // get dream id from url
+  let dreamId = req.params.id;
+  try {
+    // get dream from storage account
+    let dreamFetchResult = await tableClient.getEntity("dreams", dreamId);
+    res.statusCode = 200;
+    res.json(dreamFetchResult);
+  } catch {
+    res.statusCode = 500;
+    res.json({ status: "problem getting dream" });
+  }
+});
 
 // get all dreams
 app.get("/dreams", cors(), async function (req, res) {
@@ -116,6 +115,8 @@ app.get("/dreams", cors(), async function (req, res) {
   //   this is an EXPENSIVE routine, we have to refine this and cache AS MUCH DATA AS POSSIBLE server side
   // though now that i consider, i wonder what hosting charges that might incur?
   // TODO: explore cheap deployment platform for workhorse api
+  //   TODO: for "random" posts, perhaps there's another endpoint for public consumption with a much smaller pool?
+  // that would also solve part of the access issues with having a landing page without exposing the core API tokenlessß
   try {
     let dreamList = [];
     for await (const entity of entities) {
@@ -130,7 +131,7 @@ app.get("/dreams", cors(), async function (req, res) {
 });
 
 // get geographical region specific dreams
-// TODO: come up with a querying scheme that cuts down on the unnecessary processing 
+// TODO: come up with a querying scheme that cuts down on the unnecessary processing
 app.get("/dreams/geo", cors(), async function (req, res) {
   //validate the auth token
   if (!validateAuthToken(req.headers.authorization)) {
@@ -155,6 +156,12 @@ app.get("/dreams/geo", cors(), async function (req, res) {
     res.json({ status: "problem" });
   }
 });
+
+app.get("/user/:id", async function(req, res){
+    // TODO: we need a user table, and possibly a recurring automation task that syncs it with the azure AD listing of users
+    res.statusCode = 501;
+    res.json({status: "not implemented"});
+})
 
 // test endpoint to validate jwt token
 app.get("/jwt", function (req, res) {
@@ -182,9 +189,9 @@ app.get("/jwt", function (req, res) {
 
 // FALLBACK ROUTE
 app.get("*", function (req, res) {
-    res.statusCode = 404;
-    res.json({status: "route not found"});
-})
+  res.statusCode = 404;
+  res.json({ status: "route not found" });
+});
 
 console.log("api started up: listening on port 3000");
 app.listen(3000);
