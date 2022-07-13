@@ -9,6 +9,7 @@ const {
 const jwtDecode = require("jwt-decode");
 const express = require("express");
 const cors = require("cors");
+require('dotenv').config();
 //  ! ! ! ! ! ! !
 //  !   SETUP   !
 //  ! ! ! ! ! ! !
@@ -17,18 +18,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// TODO: parameterize these into environment variables
 const tableCredential = new AzureNamedKeyCredential(
-  "sadr3amspace",
-  "LgATTCXQjEGD6bd7jkmHrbGVMvpYqmpSLakNeW07SnqWpqVrRTCesjRaUhTR8/IUFt2mO89DenN4+ASt/nBlow=="
+  process.env.STORAGE_ACCOUNT_NAME,
+ process.env.STORAGE_ACCESS_TOKEN
 );
-const tableUrl = "https://sadr3amspace.table.core.windows.net/";
-const tableName = "ivantest";
 
 // table client is for manipulating data in a table
-const tableClient = new TableClient(tableUrl, tableName, tableCredential);
+const tableClient = new TableClient(process.env.STORAGE_ACCOUNT_URI, process.env.STORAGE_TABLE_NAME, tableCredential);
 // table SERVICE client is for creating and deleting tables
-const tableServiceClient = new TableServiceClient(tableUrl, tableCredential);
+const tableServiceClient = new TableServiceClient(process.env.STORAGE_ACCOUNT_URI, tableCredential);
 // some of that is rather unhelpfully explained in the following docs:
 // https://docs.microsoft.com/en-us/azure/cosmos-db/table/how-to-use-nodejs
 
