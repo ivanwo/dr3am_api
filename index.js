@@ -1,10 +1,16 @@
 // import jwtDecode from "jwt-decode";
-const { TableServiceClient, AzureNamedKeyCredential } = require("@azure/data-tables");
+const {
+  TableClient,
+  TableServiceClient,
+  AzureNamedKeyCredential,
+} = require("@azure/data-tables");
 const jwtDecode = require("jwt-decode");
 const express = require("express");
 const cors = require("cors");
 const app = express();
-app.use(cors())
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded());
 // let date = Date.now()
 // console.log(date);
 // console.log(Date.parse(1657588049));
@@ -20,21 +26,77 @@ app.use(cors())
 // else console.log('not expired');
 
 // DOCS LMAO
-// https://docs.microsoft.com/en-us/azure/cosmos-db/table/how-to-use-nodejs
 //
-const tableService = new TableServiceClient(
-    "https://sadr3amspace.table.core.windows.net/",
-    new AzureNamedKeyCredential("sadr3amspace", "LgATTCXQjEGD6bd7jkmHrbGVMvpYqmpSLakNeW07SnqWpqVrRTCesjRaUhTR8/IUFt2mO89DenN4+ASt/nBlow==")
-  );
+const tableCredential = new AzureNamedKeyCredential(
+  "sadr3amspace",
+  "LgATTCXQjEGD6bd7jkmHrbGVMvpYqmpSLakNeW07SnqWpqVrRTCesjRaUhTR8/IUFt2mO89DenN4+ASt/nBlow=="
+);
+const tableUrl = "https://sadr3amspace.table.core.windows.net/";
+const tableName = "ivantest";
 
-// tableService.createTable('mytable');
+// table client is for manipulating data in a table
+const tableClient = new TableClient(tableUrl, tableName, tableCredential);
+// table SERVICE client is for creating and deleting tables
+const tableServiceClient = new TableServiceClient(tableUrl, tableCredential);
+// some of that is rather unhelpfully explained in the following docs:
+// https://docs.microsoft.com/en-us/azure/cosmos-db/table/how-to-use-nodejs
+
+// tableServiceClient.createTable('mytable');
+// utility functions
+// TODO: spin these off into separate files when they work
+let validateAuthToken = (authToken) => {
+  // decode token. if invalid, error
+  // check expiration date. if expired, error
+  // check audience. if invalid, error
+  // check audience. if invalid, error
+  return true;
+  // LMAOOOO
+};
+
+let validateDreamContent = (_) => {
+  // parse dream for any hate speech, slurs, invalid text, etc
+  // check if user has submitted too many in the time period
+  return true;
+  // :P
+};
 
 app.get("/", function (req, res) {
-    res.json({ status: ":P"});
+  res.json({ status: "api active" });
+});
+
+// the dream creation endpoint
+app.post("/dream", cors(), async function (req, res) {
+  console.log("request");
+  console.log(req);
+  console.log("auth token");
+  console.log(req.headers.authorization);
+  // validate the auth token
+  if (!validateAuthToken(req.headers.authorization)) {
+    res.statusCode = 401;
+    res.json({ status: "invalid token" });
+  }
+  // validate the dream object that comes in the request body
+  let newDream = req.body;
+  console.log(req.body);
+  if (!validateDreamContent(newDream)) {
+    res.statusCode = 400;
+    res.json({ status: "malformed dream body" });
+  }
+  // add dream to storage table
+  var date = Date.now();
+  var key = date + "-" + Math.ceil(Math.random() * 1000);
+  newDream["partitionKey"] = "dreams";
+  newDream["rowKey"] = key;
+  let dreamCreateResult = await tableClient.createEntity(newDream);
+  console.log("result of dream addition process:");
+  console.log(dreamCreateResult);
+  // TODO:  determine if this actually works lmao
+  res.statusCode = 201;
+  res.json({ status: "created", dreamId: key });
 });
 
 app.get("/i", function (req, res) {
-    console.log(req.headers);
+  console.log(req.headers);
   let token = req.headers.authorization;
   let decodedToken = jwtDecode(token);
   if (
@@ -43,10 +105,9 @@ app.get("/i", function (req, res) {
     decodedToken.aud == `05ce2ef8-cf62-4442-a178-d8cef47405b0` &&
     decodedToken.exp < new Date() / 1000
   ) {
-    res.json({ status: "token checks out, authorized api call"});
-  }
-  else {
-    res.json({ status: "token is expired, fuck you"});
+    res.json({ status: "token checks out, authorized api call" });
+  } else {
+    res.json({ status: "token is expired, fuck you" });
   }
 });
 
