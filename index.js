@@ -9,7 +9,7 @@ const {
 const jwtDecode = require("jwt-decode");
 const express = require("express");
 const cors = require("cors");
-require('dotenv').config();
+require("dotenv").config();
 //  ! ! ! ! ! ! !
 //  !   SETUP   !
 //  ! ! ! ! ! ! !
@@ -20,13 +20,20 @@ app.use(cors());
 
 const tableCredential = new AzureNamedKeyCredential(
   process.env.STORAGE_ACCOUNT_NAME,
- process.env.STORAGE_ACCESS_TOKEN
+  process.env.STORAGE_ACCESS_TOKEN
 );
 
 // table client is for manipulating data in a table
-const tableClient = new TableClient(process.env.STORAGE_ACCOUNT_URI, process.env.STORAGE_TABLE_NAME, tableCredential);
+const tableClient = new TableClient(
+  process.env.STORAGE_ACCOUNT_URI,
+  process.env.STORAGE_TABLE_NAME,
+  tableCredential
+);
 // table SERVICE client is for creating and deleting tables
-const tableServiceClient = new TableServiceClient(process.env.STORAGE_ACCOUNT_URI, tableCredential);
+const tableServiceClient = new TableServiceClient(
+  process.env.STORAGE_ACCOUNT_URI,
+  tableCredential
+);
 // some of that is rather unhelpfully explained in the following docs:
 // https://docs.microsoft.com/en-us/azure/cosmos-db/table/how-to-use-nodejs
 
@@ -35,12 +42,24 @@ const tableServiceClient = new TableServiceClient(process.env.STORAGE_ACCOUNT_UR
 //  ! ! ! ! ! ! ! !
 // TODO: spin these off into separate files when they actually work
 let validateAuthToken = (authToken) => {
-  // decode token. if invalid, error
-  // check expiration date. if expired, error
-  // check audience. if invalid, error
-  // check audience. if invalid, error
-  return true;
-  // LMAOOOO
+  let decodedToken;
+  try {
+    decodedToken = jwtDecode(authToken);
+  } catch {
+    // INVALID TOKEN, HASH DOESN'T CHECK OUT
+    return false;
+  }
+  //   TODO: parameterize these as environment vars?
+  if (
+    decodedToken.iss ==
+      `https://dr3amspace.b2clogin.com/2750cbc8-954e-4ca5-b48e-ce0db4bd5eea/v2.0/` &&
+    decodedToken.aud == `05ce2ef8-cf62-4442-a178-d8cef47405b0` &&
+    decodedToken.exp > Date.now() / 1000
+  )
+    // VALID TOKEN
+    return true;
+  // INVALID TOKEN
+  else return false;
 };
 
 let validateDreamContent = (_) => {
@@ -58,18 +77,23 @@ app.get("/", function (req, res) {
   res.json({ status: "api active" });
 });
 
+//  ! ! ! ! ! ! !
+//  !  DREAMS   !
+//  ! ! ! ! ! ! !
 // dream creation
 app.post("/dream", cors(), async function (req, res) {
   // validate the auth token
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
+    return;
   }
   // validate the dream object that comes in the request body
   let newDream = req.body;
   if (!validateDreamContent(newDream)) {
     res.statusCode = 400;
     res.json({ status: "malformed dream" });
+    return;
   }
   // add dream to storage table
   var date = Date.now();
@@ -88,6 +112,7 @@ app.get("/dream/:id", cors(), async function (req, res) {
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
+    return;
   }
   // get dream id from url
   let dreamId = req.params.id;
@@ -108,8 +133,11 @@ app.get("/dreams", cors(), async function (req, res) {
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
+    return;
   }
-  let entities = tableClient.listEntities();
+  let entities = tableClient.listEntities({
+    queryOptions: { filter: "PartitionKey eq 'dreams'" },
+  });
   //   this is an EXPENSIVE routine, we have to refine this and cache AS MUCH DATA AS POSSIBLE server side
   // though now that i consider, i wonder what hosting charges that might incur?
   // TODO: explore cheap deployment platform for workhorse api
@@ -122,6 +150,7 @@ app.get("/dreams", cors(), async function (req, res) {
     }
     res.statusCode = 200;
     res.json({ dreams: dreamList });
+    return;
   } catch {
     res.statusCode = 500;
     res.json({ status: "problem" });
@@ -135,12 +164,13 @@ app.get("/dreams/geo", cors(), async function (req, res) {
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
+    return;
   }
   // okay so this one is weirder, to get table entities that match a specific query we have to tunnel into the options a little bit and use
   // the fucking "OData filter expressions i hate so much"
   // docs: https://www.odata.org/getting-started/basic-tutorial/
   let entities = tableClient.listEntities({
-    queryOptions: { filter: "location eq 'detroit' " },
+    queryOptions: { filter: "location eq 'detroit'" },
   });
   try {
     let dreamList = [];
@@ -155,11 +185,22 @@ app.get("/dreams/geo", cors(), async function (req, res) {
   }
 });
 
-app.get("/user/:id", async function(req, res){
-    // TODO: we need a user table, and possibly a recurring automation task that syncs it with the azure AD listing of users
-    res.statusCode = 501;
-    res.json({status: "not implemented"});
-})
+//  ! ! ! ! ! ! !
+//  !   USERS   !
+//  ! ! ! ! ! ! !
+app.get("/user/:id", cors(), async function (req, res) {
+  // TODO: we need a user table, and possibly a recurring automation task that syncs it with the azure AD listing of users
+  res.statusCode = 501;
+  res.json({ status: "not implemented" });
+});
+
+app.get("username", cors(), async function (req, res) {
+  // TODO: route to validate usernames when creating account configurations
+  // TODO: change auth flow to only collect email address during sign up, push collection of user account information
+  //      out of azure ad and into the first login/ incomplete account session of the UI
+  res.statusCode = 501;
+  res.json({ status: "not implemented" });
+});
 
 // test endpoint to validate jwt token
 app.get("/jwt", function (req, res) {
@@ -177,7 +218,7 @@ app.get("/jwt", function (req, res) {
     decodedToken.iss ==
       `https://dr3amspace.b2clogin.com/2750cbc8-954e-4ca5-b48e-ce0db4bd5eea/v2.0/` &&
     decodedToken.aud == `05ce2ef8-cf62-4442-a178-d8cef47405b0` &&
-    decodedToken.exp < new Date() / 1000 // TODO: figure out what's screwy with the date comparison here. Unix UTC timecode vs node default?
+    decodedToken.exp < Date.now() / 1000 // TODO: figure out what's screwy with the date comparison here. Unix UTC timecode vs node default?
   ) {
     res.json({ status: "token checks out, authorized api call" });
   } else {
