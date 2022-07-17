@@ -201,12 +201,12 @@ app.get("/dreams/geo", cors(), async function (req, res) {
 //  ! ! ! ! ! ! !
 app.get("/user", cors(), async function (req, res) {
   // validate the auth token
-  // if (!validateAuthToken(req.headers.authorization)) {
-  //   res.statusCode = 401;
-  //   res.json({ status: "invalid token" });
-  //   return;
-  // }
-  // console.log(req);
+  if (!validateAuthToken(req.headers.authorization)) {
+    res.statusCode = 401;
+    res.json({ status: "invalid token" });
+    return;
+  }
+  // return the full user profile only for the user the request is from
   let userId;
   try {
     userId = jwtDecode(req.headers.authorization);
@@ -218,19 +218,16 @@ app.get("/user", cors(), async function (req, res) {
   }
   userId = userId.sub;
 
-  console.log(userId)
+  console.log(userId);
   try {
     // get this user's data from storage account
-    let userFetchResult = await userTableClient.getEntity(
-      "users",
-      userId
-    );
+    let userFetchResult = await userTableClient.getEntity("users", userId);
     // note: please use localAccountId from azure ad as the RowKey
     res.statusCode = 200;
     res.json(userFetchResult);
   } catch {
     res.statusCode = 500;
-    res.json({ status: "problem getting user" });
+    res.json({ status: "problem getting user", signupcompleted: false });
   }
 });
 // create entry for user in the user table of the SA
