@@ -55,6 +55,7 @@ let validateAuthToken = (authToken) => {
     // INVALID TOKEN, HASH DOESN'T CHECK OUT
     return false;
   }
+  console.log(decodedToken);
   //   TODO: parameterize these as environment vars? would that even be worth it?
   if (
     decodedToken.iss ==
@@ -120,6 +121,7 @@ app.post("/dream", cors(), async function (req, res) {
 // get a specific dream based on dream partition key
 app.get("/dream/:id", cors(), async function (req, res) {
   //validate the auth token
+  console.log(req);
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
@@ -309,6 +311,25 @@ app.get("/username/:id", cors(), async function (req, res) {
     res.json({ status: "problem" });
   }
 });
+
+//  ! ! ! ! ! ! !
+//  !    NEWS   !
+//  ! ! ! ! ! ! !
+// site news, update, blog posts, etc
+app.get("/news", cors(), (req, res) => {
+  // return top two or three news items?
+  res.statusCode = 501;
+  res.json({ status: "not implemented yet"});
+});
+
+//  ! ! ! ! ! ! ! ! ! ! !
+//  !   NOTIFICATIONS   !
+//  ! ! ! ! ! ! ! ! ! ! !
+// endpoints to check if the user has any notifications.
+// could roll this into the signed in user specific GET above?
+
+
+
 
 // test endpoint to validate jwt token
 app.get("/jwt", function (req, res) {
