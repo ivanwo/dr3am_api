@@ -170,6 +170,34 @@ app.get("/dreams", cors(), async function (req, res) {
   }
 });
 
+// get all dreams by user
+app.get("/dreams/:username", cors(), async function (req, res) {
+  //validate the auth token
+  if (!validateAuthToken(req.headers.authorization)) {
+    res.statusCode = 401;
+    res.json({ status: "invalid token" });
+    return;
+  }
+  let username = req.params.username;
+  // okay so this one is weirder, to get table entities that match a specific query we have to tunnel into the options a little bit and use
+  // the fucking "OData filter expressions i hate so much"
+  // docs: https://www.odata.org/getting-started/basic-tutorial/
+  let entities = dreamTableClient.listEntities({
+    queryOptions: { filter: `user eq '${username}'` },
+  });
+  try {
+    let dreamList = [];
+    for await (const entity of entities) {
+      dreamList.push(entity);
+    }
+    res.statusCode = 200;
+    res.json({ dreams: dreamList });
+  } catch {
+    res.statusCode = 500;
+    res.json({ status: "problem" });
+  }
+});
+
 // get geographical region specific dreams
 // TODO: come up with a querying scheme that cuts down on the unnecessary processing
 app.get("/dreams/geo", cors(), async function (req, res) {
