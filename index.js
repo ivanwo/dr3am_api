@@ -55,7 +55,7 @@ let validateAuthToken = (authToken) => {
     // INVALID TOKEN, HASH DOESN'T CHECK OUT
     return false;
   }
-  console.log(decodedToken);
+  // console.log(decodedToken);
   //   TODO: parameterize these as environment vars? would that even be worth it?
   if (
     decodedToken.iss ==
@@ -70,10 +70,54 @@ let validateAuthToken = (authToken) => {
 };
 
 let validateDreamContent = (dream) => {
+  // check dream content and length
+  if (
+    dream.dreamtitle == null ||
+    dream.dreamtitle.length < 4 ||
+    dream.dreamtitle.length > 40 ||
+    dream.dreamcontent == null ||
+    dream.dreamcontent.length < 40 ||
+    dream.dreamcontent.length > 400
+  )
+    return false;
   // parse dream for any hate speech, slurs, invalid text, etc
+  // if (dream.dreamtitle.contains("")) {
+  //   return false;
+  // }
+  // if (dream.dreamcontent.contains("")) {
+  //   return false;
+  // }
   // check if user has submitted too many in the time period
   return true;
   // :P
+};
+
+let getZodiacSign = (date) => {
+  const days = [21, 20, 21, 21, 22, 22, 23, 24, 24, 24, 23, 22];
+  // const signs = ["Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo",    "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn"];
+  // const signs = ["Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo",    "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn"];
+  const signs = [
+    "♒︎",
+    "♓︎",
+    "♈︎",
+    "♉︎",
+    "♊︎",
+    "♋︎",
+    "♌︎",
+    "♍︎",
+    "♎︎",
+    "♏︎",
+    "♐︎",
+    "♑︎",
+  ];
+  let month = date.getMonth();
+  let day = date.getDate();
+  if (month == 0 && day <= 20) {
+    month = 11;
+  } else if (day < days[month]) {
+    month--;
+  }
+  return signs[month];
 };
 
 let validateUserAccount = (user) => {
@@ -121,7 +165,7 @@ app.post("/dream", cors(), async function (req, res) {
 // get a specific dream based on dream partition key
 app.get("/dream/:id", cors(), async function (req, res) {
   //validate the auth token
-  console.log(req);
+  // console.log(req);
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
     res.json({ status: "invalid token" });
@@ -161,6 +205,7 @@ app.get("/dreams", cors(), async function (req, res) {
     for await (const entity of entities) {
       dreamList.push(entity);
     }
+    if (dreamList.length > 1) dreamList.reverse();
     res.statusCode = 200;
     res.json({ dreams: dreamList });
     return;
@@ -190,6 +235,7 @@ app.get("/dreams/:username", cors(), async function (req, res) {
     for await (const entity of entities) {
       dreamList.push(entity);
     }
+    if (dreamList.length > 1) dreamList.reverse();
     res.statusCode = 200;
     res.json({ dreams: dreamList });
   } catch {
@@ -218,6 +264,7 @@ app.get("/dreams/geo", cors(), async function (req, res) {
     for await (const entity of entities) {
       dreamList.push(entity);
     }
+    if (dreamList.length > 1) dreamList.reverse();
     res.statusCode = 200;
     res.json({ dreams: dreamList });
   } catch {
@@ -281,6 +328,7 @@ app.post("/user", cors(), async function (req, res) {
   user.createdon = Date.now();
   user.PartitionKey = "users";
   user.signupcompleted = true;
+  user.zodiac = getZodiacSign(new Date(user.birthday));
   try {
     let userCreateResult = await userTableClient.createEntity(user);
     res.statusCode = 201;
@@ -347,7 +395,7 @@ app.get("/username/:id", cors(), async function (req, res) {
 app.get("/news", cors(), (req, res) => {
   // return top two or three news items?
   res.statusCode = 501;
-  res.json({ status: "not implemented yet"});
+  res.json({ status: "not implemented yet" });
 });
 
 //  ! ! ! ! ! ! ! ! ! ! !
@@ -355,9 +403,6 @@ app.get("/news", cors(), (req, res) => {
 //  ! ! ! ! ! ! ! ! ! ! !
 // endpoints to check if the user has any notifications.
 // could roll this into the signed in user specific GET above?
-
-
-
 
 // test endpoint to validate jwt token
 app.get("/jwt", function (req, res) {
