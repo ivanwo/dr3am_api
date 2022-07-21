@@ -7,6 +7,7 @@ const {
   AzureNamedKeyCredential,
 } = require("@azure/data-tables");
 const jwtDecode = require("jwt-decode");
+const webpush = require("web-push");
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -17,6 +18,13 @@ const app = express();
 // app.use(express.urlencoded());
 app.use(express.json());
 app.use(cors());
+
+//setting vapid keys details
+webpush.setVapidDetails(
+  "mailto:admin@dr3am.space",
+  process.env.PUBLIC_VAPID_KEY,
+  process.env.PRIVATE_VAPID_KEY
+);
 
 const tableCredential = new AzureNamedKeyCredential(
   process.env.STORAGE_ACCOUNT_NAME,
@@ -95,7 +103,6 @@ let validateDreamContent = (dream) => {
 let getZodiacSign = (date) => {
   const days = [21, 20, 21, 21, 22, 22, 23, 24, 24, 24, 23, 22];
   // const signs = ["Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo",    "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn"];
-  // const signs = ["Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo",    "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn"];
   const signs = [
     "♒︎",
     "♓︎",
@@ -164,7 +171,7 @@ app.post("/dream", cors(), async function (req, res) {
 
 // get a specific dream based on dream partition key
 app.get("/dream/:id", cors(), async function (req, res) {
-  //validate the auth token
+  // validate the auth token
   // console.log(req);
   if (!validateAuthToken(req.headers.authorization)) {
     res.statusCode = 401;
@@ -198,7 +205,7 @@ app.get("/dreams", cors(), async function (req, res) {
   //   this is an EXPENSIVE routine, we have to refine this and cache AS MUCH DATA AS POSSIBLE server side
   // though now that i consider, i wonder what hosting charges that might incur?
   // TODO: explore cheap deployment platform for workhorse api
-  //   TODO: for "random" posts, perhaps there's another endpoint for public consumption with a much smaller pool?
+  // TODO: for "random" posts, perhaps there's another endpoint for public consumption with a much smaller pool?
   // that would also solve part of the access issues with having a landing page without exposing the core API tokenlessß
   try {
     let dreamList = [];
@@ -404,12 +411,28 @@ app.get("/news", cors(), (req, res) => {
 // endpoints to check if the user has any notifications.
 // could roll this into the signed in user specific GET above?
 
+app.post("/subscribe", (req, res) => {
+  // validate jwt
+  // get subscription information
+  let subscription = req.body;
+  console.log(subscription);
+  // save user information to the database
+  // notify user of subscription
+  res.statusCode = 201;
+  res.json({ status: "subscribe to push notification noted" });
+  // send notification
+  let payload = JSON.stringify({ title: "dr3am.space notification" });
+  webpush
+    .sendNotification(subscription, payload)
+    .catch((err) => console.error(err));
+});
+
 // test endpoint to validate jwt token
 app.get("/jwt", function (req, res) {
   // check if token is valid
   let decodedToken;
   try {
-    let token = req.headers.authorization;
+    let token = req.headers.authorization; 
     decodedToken = jwtDecode(token);
   } catch {
     res.statusCode = 400;
